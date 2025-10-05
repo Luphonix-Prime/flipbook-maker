@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ metadata.filename }} - Flipbook</title>
+    <link rel="stylesheet" href="/static/css/flipbook.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/3/turn.min.js"></script>
+</head>
+<body>
+    <div class="flipbook-container">
+        <div class="header">
+            <div class="title">{{ metadata.filename }}</div>
+            <div class="page-info">
+                pages: <span id="currentPage">1</span> / <span id="totalPages">{{ metadata.total_pages }}</span>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="thumbnails-panel">
+                <div class="thumbnails-header">PAGES</div>
+                <div class="thumbnails-list" id="thumbnailsList">
+                    {% for page in metadata.pages %}
+                    <div class="thumbnail-item" data-page="{{ page.page }}">
+                        <img src="/static/{{ page.image }}" alt="Page {{ page.page }}">
+                        <div class="thumbnail-number">{{ '%02d'|format(page.page) }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div class="flipbook-wrapper">
+                <div id="flipbook">
+                    {% for page in metadata.pages %}
+                    <div class="page">
+                        <img src="/static/{{ page.image }}" alt="Page {{ page.page }}">
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="exportBtn" class="control-btn export-btn">
+                💾 Export as .exe
+            </button>
+            
+            <button id="prevBtn" class="control-btn">
+                <span class="arrow">◀◀</span>
+            </button>
+            
+            <button id="zoomOutBtn" class="control-btn zoom-btn">🔍−</button>
+            <button id="zoomInBtn" class="control-btn zoom-btn">🔍+</button>
+            <button id="fullscreenBtn" class="control-btn">⛶</button>
+            
+            <button id="nextBtn" class="control-btn">
+                <span class="arrow">▶▶</span>
+            </button>
+        </div>
+        
+        <div id="exportStatus" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); z-index: 1000; text-align: center;">
+            <div class="export-message">Creating standalone .exe file...</div>
+            <div style="margin: 20px 0;">
+                <div style="width: 300px; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
+                    <div class="progress-animation" style="height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); animation: progress 1.5s ease-in-out infinite;"></div>
+                </div>
+            </div>
+            <div class="export-details" style="color: #666; font-size: 0.9rem;"></div>
+        </div>
+        
+        <style>
+            .export-btn {
+                background: linear-gradient(180deg, #28a745 0%, #218838 100%) !important;
+                margin-right: auto;
+            }
+            
+            .export-btn:hover {
+                background: linear-gradient(180deg, #34ce57 0%, #28a745 100%) !important;
+            }
+            
+            @keyframes progress {
+                0% { width: 0%; }
+                50% { width: 70%; }
+                100% { width: 100%; }
+            }
+        </style>
+    </div>
+    
+    <script>
+        const totalPages = {{ metadata.total_pages }};
+        const flipbookData = {{ metadata|tojson }};
+        const flipbookId = "{{ flipbook_id }}";
+    </script>
+    <script src="/static/js/flipbook.js"></script>
+</body>
+</html>

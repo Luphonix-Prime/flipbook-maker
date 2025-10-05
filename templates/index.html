@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Flipbook Converter</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="upload-container">
+        <div class="upload-box">
+            <h1>📖 PDF Flipbook Converter</h1>
+            <p>Upload a PDF to create an interactive flipbook with realistic page-turning animations</p>
+            
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="file-input-wrapper">
+                    <input type="file" id="pdfFile" name="pdf" accept=".pdf" required>
+                    <label for="pdfFile" id="fileLabel">
+                        <span class="file-icon">📄</span>
+                        <span class="file-text">Choose PDF File</span>
+                    </label>
+                </div>
+                
+                <button type="submit" id="uploadBtn" class="upload-btn">
+                    Create Flipbook
+                </button>
+            </form>
+            
+            <div id="progress" class="progress" style="display: none;">
+                <div class="progress-bar"></div>
+                <p class="progress-text">Processing PDF...</p>
+            </div>
+            
+            <div id="result" class="result" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <script src="/static/js/upload.js"></script>
+</body>
+</html>
