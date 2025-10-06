@@ -512,6 +512,7 @@ def create_standalone_viewer_html(metadata, output_dir):
                         }},
                         turned: function(event, page, view) {{
                             console.log('Current page:', page);
+                            updatePageInfo(page);
                         }}
                     }}
                 }});
@@ -543,6 +544,20 @@ def create_standalone_viewer_html(metadata, output_dir):
             
             function updatePageInfo(page) {{
                 $('#currentPage').text(page);
+                
+                // Update Previous button state
+                if (page <= 1) {{
+                    $('#prevBtn').prop('disabled', true).css('opacity', '0.5');
+                }} else {{
+                    $('#prevBtn').prop('disabled', false).css('opacity', '1');
+                }}
+                
+                // Update Next button state
+                if (page >= totalPages) {{
+                    $('#nextBtn').prop('disabled', true).css('opacity', '0.5');
+                }} else {{
+                    $('#nextBtn').prop('disabled', false).css('opacity', '1');
+                }}
             }}
             
             function updateThumbnails(page) {{
@@ -555,12 +570,20 @@ def create_standalone_viewer_html(metadata, output_dir):
                 }}
             }}
             
-            $('#prevBtn').click(function() {{
-                $('#flipbook').turn('previous');
+            // Previous button with boundary check
+            $('#prevBtn').on('click', function() {{
+                const currentPage = $('#flipbook').turn('page');
+                if (currentPage > 1) {{
+                    $('#flipbook').turn('previous');
+                }}
             }});
             
-            $('#nextBtn').click(function() {{
-                $('#flipbook').turn('next');
+            // Next button with boundary check
+            $('#nextBtn').on('click', function() {{
+                const currentPage = $('#flipbook').turn('page');
+                if (currentPage < totalPages) {{
+                    $('#flipbook').turn('next');
+                }}
             }});
             
             $('.thumbnail-item').click(function() {{
@@ -640,9 +663,14 @@ def create_standalone_viewer_html(metadata, output_dir):
                 }}
             }});
             
-            $(window).on('keydown', function(e) {{
-                if (e.keyCode === 37) $('#flipbook').turn('previous');
-                else if (e.keyCode === 39) $('#flipbook').turn('next');
+            // Keyboard navigation with boundary checks
+            $(document).on('keydown', function(e) {{
+                const currentPage = $('#flipbook').turn('page');
+                if (e.keyCode === 37 && currentPage > 1) {{ // Left arrow
+                    $('#flipbook').turn('previous');
+                }} else if (e.keyCode === 39 && currentPage < totalPages) {{ // Right arrow
+                    $('#flipbook').turn('next');
+                }}
             }});
             
             initFlipbook();
