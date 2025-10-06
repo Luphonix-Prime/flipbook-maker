@@ -535,25 +535,7 @@ def create_standalone_viewer_html(metadata, output_dir):
                 }}
             }}
             
-            function addFlipAreas() {{
-                const flipbookContainer = $('.flipbook-wrapper');
-                
-                // Create left flip area
-                const leftArea = $('<div class="page-flip-area left"></div>');
-                leftArea.on('click', function(e) {{
-                    $('#flipbook').turn('previous');
-                }});
-                
-                // Create right flip area
-                const rightArea = $('<div class="page-flip-area right"></div>');
-                rightArea.on('click', function(e) {{
-                    $('#flipbook').turn('next');
-                }});
-                
-                flipbookContainer.append(leftArea);
-                flipbookContainer.append(rightArea);
-            }}
-            
+          
             function updatePageInfo(page) {{
                 $('#currentPage').text(page);
                 
