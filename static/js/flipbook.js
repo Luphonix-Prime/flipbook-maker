@@ -10,7 +10,9 @@ $(document).ready(function() {
             elevation: 50,
             gradients: true,
             autoCenter: true,
-            duration: 1000,
+            duration: 1500,
+            acceleration: true,
+            easing: 'cubic-bezier(0.4, 0.0, 0.2, 1)',
             pages: totalPages,
             when: {
                 turning: function(event, page, view) {
@@ -96,10 +98,12 @@ $(document).ready(function() {
             dragDistance = startX - currentX;
             
             if (dragDistance > 0) {
-                const curlSize = Math.min(dragDistance * 0.8, 200);
-                rightCurl.addClass('active').css({
-                    'border-bottom-width': curlSize + 'px',
-                    'border-left-width': curlSize + 'px'
+                requestAnimationFrame(() => {
+                    const curlSize = Math.min(dragDistance * 0.8, 200);
+                    rightCurl.addClass('active').css({
+                        'border-bottom-width': curlSize + 'px',
+                        'border-left-width': curlSize + 'px'
+                    });
                 });
             }
         });
@@ -145,12 +149,14 @@ $(document).ready(function() {
             leftDragDistance = currentX - leftStartX;
             
             if (leftDragDistance > 0) {
-                const curlSize = Math.min(leftDragDistance * 0.8, 200);
-                leftCurl.addClass('active').css({
-                    'border-bottom-width': curlSize + 'px',
-                    'border-right-width': curlSize + 'px',
-                    'left': '0',
-                    'right': 'auto'
+                requestAnimationFrame(() => {
+                    const curlSize = Math.min(leftDragDistance * 0.8, 200);
+                    leftCurl.addClass('active').css({
+                        'border-bottom-width': curlSize + 'px',
+                        'border-right-width': curlSize + 'px',
+                        'left': '0',
+                        'right': 'auto'
+                    });
                 });
             }
         });
@@ -284,107 +290,21 @@ $(document).ready(function() {
         window.print();
     });
     
-    // Toggle audio (page turn sound)
-    let audioEnabled = true; // Enable sound by default
+    // Page flip sound
+    let audioEnabled = true;
+    const pageFlipSound = new Audio('/static/audio/page-flip.mp3');
+    pageFlipSound.volume = 0.7;
     
-    // Create realistic page flip sound using real audio sample
-    // This is a base64-encoded WAV file of an actual page flip sound
-    const pageFlipSound = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
-    pageFlipSound.volume = 0.5;
-    
-    // Fallback: Generate realistic page flip sound if needed
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    
-    function playPageFlipSound() {
-        if (pageFlipSound && pageFlipSound.readyState >= 2) {
-            // Use real audio file
-            pageFlipSound.currentTime = 0;
-            pageFlipSound.play().catch(() => {
-                // Fallback to generated sound
-                generatePageFlipSound();
-            });
-        } else {
-            // Generate realistic page flip sound
-            generatePageFlipSound();
-        }
-    }
-    
-    function generatePageFlipSound() {
-        const duration = 0.25;
-        const now = audioContext.currentTime;
-        
-        // Create multiple oscillators for a more realistic paper sound
-        const oscillator1 = audioContext.createOscillator();
-        const oscillator2 = audioContext.createOscillator();
-        const noiseBuffer = createNoiseBuffer();
-        const noiseSource = audioContext.createBufferSource();
-        noiseSource.buffer = noiseBuffer;
-        
-        const gainNode = audioContext.createGain();
-        const noiseGain = audioContext.createGain();
-        const filter = audioContext.createBiquadFilter();
-        
-        // Set up filter for paper-like texture
-        filter.type = 'bandpass';
-        filter.frequency.value = 2000;
-        filter.Q.value = 1;
-        
-        // Connect nodes
-        oscillator1.connect(gainNode);
-        oscillator2.connect(gainNode);
-        noiseSource.connect(noiseGain);
-        noiseGain.connect(filter);
-        filter.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        // Configure oscillators for swish sound
-        oscillator1.type = 'sine';
-        oscillator1.frequency.setValueAtTime(800, now);
-        oscillator1.frequency.exponentialRampToValueAtTime(200, now + duration);
-        
-        oscillator2.type = 'triangle';
-        oscillator2.frequency.setValueAtTime(1200, now);
-        oscillator2.frequency.exponentialRampToValueAtTime(150, now + duration);
-        
-        // Envelope for realistic page flip
-        gainNode.gain.setValueAtTime(0, now);
-        gainNode.gain.linearRampToValueAtTime(0.15, now + 0.02);
-        gainNode.gain.exponentialRampToValueAtTime(0.05, now + duration * 0.6);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
-        
-        noiseGain.gain.setValueAtTime(0.08, now);
-        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration * 0.5);
-        
-        // Start sounds
-        oscillator1.start(now);
-        oscillator1.stop(now + duration);
-        oscillator2.start(now);
-        oscillator2.stop(now + duration);
-        noiseSource.start(now);
-        noiseSource.stop(now + duration * 0.5);
-    }
-    
-    function createNoiseBuffer() {
-        const bufferSize = audioContext.sampleRate * 0.5;
-        const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
-        const data = buffer.getChannelData(0);
-        
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1;
-        }
-        
-        return buffer;
-    }
-    
-    // Add sound to page turns
+    // Play sound when page turns
     $('#flipbook').on('turned', function() {
         if (audioEnabled) {
-            playPageFlipSound();
+            pageFlipSound.currentTime = 0;
+            pageFlipSound.play().catch(e => console.log('Audio failed:', e));
         }
     });
     
-    $('#audioBtn').html('🔊'); // Set initial icon to enabled
-    
+    // Toggle sound on/off
+    $('#audioBtn').html('🔊');
     $('#audioBtn').click(function() {
         audioEnabled = !audioEnabled;
         $(this).html(audioEnabled ? '🔊' : '🔇');
