@@ -1,0 +1,143 @@
+ Build me a complete system with these exact specifications:
+
+I want a full Replit project that:
+✅ Lets the user upload a PDF file.
+✅ Processes it into a structured “context” package that includes:
+   - `context.json` containing: filename, filesize, total pages, text per page, auto summary, and created timestamp.
+   - Page-by-page PNG images (both thumbnail + full size).
+✅ Generates a ready-to-view static “viewer” folder with:
+   - `index.html`, `viewer.js`, and `style.css` that display thumbnails, extracted text, and metadata.
+✅ Includes a Flask-based backend (`app.py`) for uploads and processing.
+✅ Includes a clean README.md with run instructions and .exe packaging guide.
+✅ Automatically organizes outputs like:
+uploads/
+outputs/<filename>/
+├── page_001.png
+├── page_001_thumb.png
+├── context.json
+└── viewer/
+├── index.html
+├── viewer.js
+└── style.css
+
+markdown
+Copy code
+
+---
+
+### ⚙️ **Tech & Library Requirements:**
+Use **Python (Flask)** for the backend and PDF processing.  
+Use these libraries:
+- `flask` → web API  
+- `pdf2image` → convert PDF pages to PNG  
+- `pytesseract` → OCR text from images  
+- `pdfminer.six` → extract text directly from PDF if possible  
+- `Pillow` → image manipulation  
+- `nltk` or simple logic for summarization  
+- `json`, `datetime`, and standard Python modules  
+
+Create a `requirements.txt` file with all these libraries.
+
+Include a `replit.nix` file that installs system-level deps:
+{ pkgs }: {
+deps = [
+pkgs.python312Full
+pkgs.tesseract
+pkgs.poppler_utils
+];
+}
+
+markdown
+Copy code
+
+---
+
+### 🧠 **Functional Requirements:**
+1. **Frontend:**
+   - `index.html` simple upload page (file input + submit button)
+   - When upload is done, show a link to view output folder.
+2. **Backend:**
+   - `/upload` route → accepts PDF → saves in `uploads/` → processes → saves to `outputs/<pdf_name>/`
+   - Returns the generated context (JSON)
+3. **Processing Logic (in `processor.py`):**
+   - Convert PDF to PNGs with `pdf2image`
+   - Create thumbnails (max width 400px)
+   - Try extracting text per page using `pdfminer.six`
+   - If text empty → fallback to `pytesseract` OCR
+   - Combine all text → generate short summary (first few lines or sentences)
+   - Save structured JSON:
+     ```json
+     {
+       "filename": "sample.pdf",
+       "filesize": 204857,
+       "pages": 3,
+       "summary": "Short auto summary",
+       "created_at": "2025-10-05T16:30:00",
+       "pages_data": [
+         {
+           "page": 1,
+           "text": "Extracted text",
+           "image": "page_001.png",
+           "thumbnail": "page_001_thumb.png"
+         }
+       ]
+     }
+     ```
+4. **Viewer (HTML/JS):**
+   - Loads `context.json`
+   - Displays PDF name + summary
+   - Shows all thumbnails; clicking one loads full page image + text
+   - Simple CSS styling; no frameworks
+5. **Packaging Script:**
+   - Include a `launcher.py` file:
+     ```python
+     import webbrowser, os, sys
+     HERE = os.path.join(sys._MEIPASS) if hasattr(sys, '_MEIPASS') else os.path.dirname(__file__)
+     webbrowser.open('file://' + os.path.abspath(os.path.join(HERE, 'viewer', 'index.html')))
+     ```
+   - Add `PyInstaller` build instructions in README:
+     ```
+     pip install pyinstaller
+     pyinstaller --onefile --add-data "viewer;viewer" launcher.py
+     ```
+   - Output `.exe` will open the static viewer in browser.
+
+---
+
+### 📦 **Deliverables:**
+- `app.py` (Flask API)
+- `processor.py` (PDF processor)
+- `viewer/index.html`, `viewer/viewer.js`, `viewer/style.css`
+- `requirements.txt`
+- `replit.nix`
+- `README.md`
+- Example test PDF in `/samples`
+- Instructions to build `.exe` using PyInstaller
+
+---
+
+### 💄 **Design Style (Viewer):**
+- Minimal modern layout
+- Thumbnails in grid (flex-wrap)
+- Clicking a thumbnail → right-side full page image + extracted text
+- Smooth fade transitions (optional)
+- Dark mode or light clean UI — your choice
+
+---
+
+### 🧩 **Bonus (if possible):**
+- Add progress log in Flask console for each step (convert → OCR → JSON → done)
+- Add error handling for large PDFs
+- Add `/list` endpoint to list processed PDFs
+- Make sure output folders don’t overwrite older files with same name
+
+---
+
+### 🪄 **End Goal Summary:**
+When I run this project on Replit:
+- I open the web interface → upload any PDF
+- System automatically extracts text + creates images + makes summary
+- Generates a full viewer folder with all assets and JSON
+- I can zip that folder or convert it into an `.exe` for offline sharing.
+
+Please implement **all** these things clearly, cleanly, and well-commented.

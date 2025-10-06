@@ -202,6 +202,31 @@ def create_standalone_viewer_html(metadata, output_dir):
             opacity: 0.5;
             cursor: not-allowed;
         }}
+
+        .page-curl {{
+            position: absolute;
+            bottom: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0;
+            border-color: transparent;
+            transition: all 0.35s cubic-bezier(0.4, 0.0, 0.2, 1);
+            pointer-events: none;
+            z-index: 150;
+        }}
+
+        .page-curl.right {{
+            right: 0;
+            border-bottom-color: rgba(0, 0, 0, 0.15);
+            border-left-color: rgba(255, 255, 255, 0.3);
+        }}
+
+        .page-curl.left {{
+            left: 0;
+            border-bottom-color: rgba(0, 0, 0, 0.15);
+            border-right-color: rgba(255, 255, 255, 0.3);
+        }}
     </style>
 </head>
 <body>
@@ -247,12 +272,17 @@ def create_standalone_viewer_html(metadata, output_dir):
         </div>
         
         <div class="controls">
-            <button id="prevBtn" class="control-btn">◀◀</button>
-            <button id="zoomOutBtn" class="control-btn">🔍−</button>
-            <button id="zoomInBtn" class="control-btn">🔍+</button>
-            <button id="fullscreenBtn" class="control-btn">⛶</button>
-            <button id="nextBtn" class="control-btn">▶▶</button>
+            <button id="prevBtn" class="control-btn">◀ Previous</button>
+            <button id="audioBtn" class="control-btn">🔊</button>
+            <button id="zoomOutBtn" class="control-btn">Zoom −</button>
+            <button id="zoomInBtn" class="control-btn">Zoom +</button>
+            <button id="fullscreenBtn" class="control-btn">⛶ Fullscreen</button>
+            <button id="printBtn" class="control-btn">🖨️ Print</button>
+            <button id="nextBtn" class="control-btn">Next ▶</button>
         </div>
+        
+        <div class="page-curl right"></div>
+        <div class="page-curl left"></div>
     </div>
     
     <script>
@@ -263,6 +293,11 @@ def create_standalone_viewer_html(metadata, output_dir):
             let flipbookWidth = 800;
             let flipbookHeight = 600;
             
+            // Page flip audio
+            let audioEnabled = true;
+            const pageFlipSound = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGi78OScTgwNUrDn77ZiGwU4k9n0y3krBSl+zPLaizsKF2S36OSXUAoJQ6Hn8bllHgU1jdXzzn0pBSuBzvLZiTYIGGi78OScTgwNUrDn77ZiGwU4k9n0y3krBSl+zPLaizsKF2S36OSXUAoJQ6Hn8bllHgU1jdXzzn0pBSuBzvLZiTYIGGi78OScTgwNUrDn77ZiGwU4k9n0y3krBSl+zPLaizsKF2S36OSXUAoJQ6Hn8bllHgU1jdXzzn0pBSuBzvLZiTYIGGi78OScTgwNUrDn77ZiGwU4k9n0y3krBSl+zPLaizsKF2S36OSXUAoJQ6Hn8bllHgU1jdXzzn0pBSuBzvLZiTYIGGi78OScTgwNUrDn77ZiGwU4k9n0y3krBSl+zPLaizsKF2S36OSXUAoJQ6Hn8bllHgU1jdXzzn0pBSuBzvLZiTYIGGi78OScTgwNUrDn77ZiGwU4k9n0y3krBSl+zPLaizsKF2S36OSXUAoJQ6Hn8bllHgU1jdXzzn0pBSuBzvLZiTYIGGi78OScTgwNU==');
+            pageFlipSound.volume = 0.7;
+            
             function initFlipbook() {{
                 $('#flipbook').turn({{
                     width: flipbookWidth,
@@ -270,12 +305,17 @@ def create_standalone_viewer_html(metadata, output_dir):
                     elevation: 50,
                     gradients: true,
                     autoCenter: true,
-                    duration: 1000,
+                    duration: 1500,
+                    acceleration: true,
                     pages: totalPages,
                     when: {{
                         turning: function(event, page, view) {{
                             updatePageInfo(page);
                             updateThumbnails(page);
+                            if (audioEnabled) {{
+                                pageFlipSound.currentTime = 0;
+                                pageFlipSound.play().catch(e => console.log('Audio failed:', e));
+                            }}
                         }}
                     }}
                 }});
@@ -342,9 +382,80 @@ def create_standalone_viewer_html(metadata, output_dir):
                 }}
             }});
             
+            $('#printBtn').click(function() {{
+                window.print();
+            }});
+            
+            $('#audioBtn').html('🔊');
+            $('#audioBtn').click(function() {{
+                audioEnabled = !audioEnabled;
+                $(this).html(audioEnabled ? '🔊' : '🔇');
+            }});
+            
             $(window).on('keydown', function(e) {{
                 if (e.keyCode === 37) $('#flipbook').turn('previous');
                 else if (e.keyCode === 39) $('#flipbook').turn('next');
+            }});
+            
+            // Page curl drag effects
+            const rightCurl = $('.page-curl.right');
+            const leftCurl = $('.page-curl.left');
+            let startX, currentX, dragDistance;
+            let leftStartX, leftDragDistance;
+            
+            $('.flipbook-wrapper').on('mousedown touchstart', function(e) {{
+                const x = e.pageX || e.originalEvent.touches[0].pageX;
+                const containerWidth = $(this).width();
+                const clickPosition = x - $(this).offset().left;
+                
+                if (clickPosition > containerWidth / 2) {{
+                    startX = x;
+                }} else {{
+                    leftStartX = x;
+                }}
+            }});
+            
+            $('.flipbook-wrapper').on('mousemove touchmove', function(e) {{
+                const x = e.pageX || e.originalEvent.touches[0].pageX;
+                
+                if (startX) {{
+                    currentX = x;
+                    dragDistance = startX - currentX;
+                    
+                    if (dragDistance > 0) {{
+                        const curlSize = Math.min(dragDistance * 0.8, 200);
+                        rightCurl.addClass('active').css({{
+                            'border-bottom-width': curlSize + 'px',
+                            'border-left-width': curlSize + 'px'
+                        }});
+                    }}
+                }}
+                
+                if (leftStartX) {{
+                    currentX = x;
+                    leftDragDistance = currentX - leftStartX;
+                    
+                    if (leftDragDistance > 0) {{
+                        const curlSize = Math.min(leftDragDistance * 0.8, 200);
+                        leftCurl.addClass('active').css({{
+                            'border-bottom-width': curlSize + 'px',
+                            'border-right-width': curlSize + 'px'
+                        }});
+                    }}
+                }}
+            }});
+            
+            $('.flipbook-wrapper').on('mouseup mouseleave touchend', function() {{
+                rightCurl.removeClass('active').css({{
+                    'border-bottom-width': '0',
+                    'border-left-width': '0'
+                }});
+                leftCurl.removeClass('active').css({{
+                    'border-bottom-width': '0',
+                    'border-right-width': '0'
+                }});
+                startX = null;
+                leftStartX = null;
             }});
             
             initFlipbook();
