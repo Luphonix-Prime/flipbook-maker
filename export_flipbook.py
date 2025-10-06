@@ -6,6 +6,13 @@ import json
 from pathlib import Path
 
 def create_standalone_viewer_html(metadata, output_dir):
+    # Copy audio file to output directory
+    source_audio = 'static/audio/page-flp.mp3'
+    if os.path.exists(source_audio):
+        dest_audio = os.path.join(output_dir, 'page-flp.mp3')
+        shutil.copy(source_audio, dest_audio)
+        print(f"Copied audio file to {dest_audio}")
+    
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -227,6 +234,155 @@ def create_standalone_viewer_html(metadata, output_dir):
             border-bottom-color: rgba(0, 0, 0, 0.15);
             border-right-color: rgba(255, 255, 255, 0.3);
         }}
+
+        .page-flip-area {{
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 50%;
+            cursor: pointer;
+            z-index: 100;
+        }}
+
+        .page-flip-area.left {{
+            left: 0;
+        }}
+
+        .page-flip-area.right {{
+            right: 0;
+        }}
+
+        .grid-modal {{
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 2000;
+            overflow-y: auto;
+            padding: 20px;
+        }}
+
+        .grid-modal.active {{
+            display: block;
+        }}
+
+        .grid-container {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }}
+
+        .grid-item {{
+            cursor: pointer;
+            position: relative;
+            border: 3px solid transparent;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }}
+
+        .grid-item:hover {{
+            border-color: #667eea;
+            transform: scale(1.05);
+        }}
+
+        .grid-item img {{
+            width: 100%;
+            border-radius: 5px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }}
+
+        .grid-item-number {{
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }}
+
+        .grid-close {{
+            position: fixed;
+            top: 20px;
+            right: 30px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            border-radius: 5px;
+            z-index: 2001;
+        }}
+
+        .help-modal {{
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            z-index: 2000;
+            max-width: 500px;
+            width: 90%;
+        }}
+
+        .help-modal.active {{
+            display: block;
+        }}
+
+        .help-overlay {{
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1999;
+        }}
+
+        .help-overlay.active {{
+            display: block;
+        }}
+
+        .help-modal h2 {{
+            margin-top: 0;
+            color: #333;
+        }}
+
+        .help-modal ul {{
+            list-style: none;
+            padding: 0;
+        }}
+
+        .help-modal li {{
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }}
+
+        .help-close {{
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 15px;
+        }}
+
+        .thumbnails-panel.hidden {{
+            display: none;
+        }}
     </style>
 </head>
 <body>
@@ -273,6 +429,10 @@ def create_standalone_viewer_html(metadata, output_dir):
         
         <div class="controls">
             <button id="prevBtn" class="control-btn">◀ Previous</button>
+            <button id="singlePageBtn" class="control-btn" title="Single Page View">📄</button>
+            <button id="gridViewBtn" class="control-btn" title="Grid View">🔲</button>
+            <button id="helpBtn" class="control-btn" title="Help">❗</button>
+            <button id="toggleThumbnailsBtn" class="control-btn" title="Toggle Thumbnails">🖼️</button>
             <button id="audioBtn" class="control-btn">🔊</button>
             <button id="zoomOutBtn" class="control-btn">Zoom −</button>
             <button id="zoomInBtn" class="control-btn">Zoom +</button>
@@ -284,6 +444,29 @@ def create_standalone_viewer_html(metadata, output_dir):
         <div class="page-curl right"></div>
         <div class="page-curl left"></div>
     </div>
+
+    <div class="grid-modal" id="gridModal">
+        <button class="grid-close" onclick="closeGridView()">✕ Close Grid View</button>
+        <div class="grid-container" id="gridContainer"></div>
+    </div>
+
+    <div class="help-overlay" id="helpOverlay"></div>
+    <div class="help-modal" id="helpModal">
+        <h2>📖 Flipbook Controls</h2>
+        <ul>
+            <li><strong>◀ ▶ Buttons:</strong> Navigate between pages</li>
+            <li><strong>📄 Single Page:</strong> View one page at a time</li>
+            <li><strong>🔲 Grid View:</strong> See all pages at once</li>
+            <li><strong>🖼️ Thumbnails:</strong> Toggle side panel</li>
+            <li><strong>🔊 Audio:</strong> Toggle page flip sound</li>
+            <li><strong>Zoom +/-:</strong> Adjust flipbook size</li>
+            <li><strong>⛶ Fullscreen:</strong> Enter fullscreen mode</li>
+            <li><strong>🖨️ Print:</strong> Print all pages</li>
+            <li><strong>Arrow Keys:</strong> Navigate pages</li>
+            <li><strong>Click Edges:</strong> Turn pages</li>
+        </ul>
+        <button class="help-close" onclick="closeHelp()">Got it!</button>
+    </div>
     
     <script>
         const totalPages = {metadata['total_pages']};
@@ -293,10 +476,12 @@ def create_standalone_viewer_html(metadata, output_dir):
             let flipbookWidth = 800;
             let flipbookHeight = 600;
             
-            // Page flip audio
+            // Page flip audio - preload to reduce latency
             let audioEnabled = true;
-            const pageFlipSound = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGi78OScTgwNUrDn77ZiGwU4k9n0y3krBSl+zPLaizsKF2S36OSXUAoJQ6Hn8bllHgU1jdXzzn0pBSuBzvLZiTYIGGi78OScTgwNUrDn77ZiGwU4k9n0y3krBSl+zPLaizsKF2S36OSXUAoJQ6Hn8bllHgU1jdXzzn0pBSuBzvLZiTYIGGi78OScTgwNUrDn77ZiGwU4k9n0y3krBSl+zPLaizsKF2S36OSXUAoJQ6Hn8bllHgU1jdXzzn0pBSuBzvLZiTYIGGi78OScTgwNUrDn77ZiGwU4k9n0y3krBSl+zPLaizsKF2S36OSXUAoJQ6Hn8bllHgU1jdXzzn0pBSuBzvLZiTYIGGi78OScTgwNUrDn77ZiGwU4k9n0y3krBSl+zPLaizsKF2S36OSXUAoJQ6Hn8bllHgU1jdXzzn0pBSuBzvLZiTYIGGi78OScTgwNUrDn77ZiGwU4k9n0y3krBSl+zPLaizsKF2S36OSXUAoJQ6Hn8bllHgU1jdXzzn0pBSuBzvLZiTYIGGi78OScTgwNU==');
+            const pageFlipSound = new Audio('page-flp.mp3');
             pageFlipSound.volume = 0.7;
+            pageFlipSound.preload = 'auto';
+            pageFlipSound.load(); // Force preload
             
             function initFlipbook() {{
                 $('#flipbook').turn({{
@@ -312,16 +497,36 @@ def create_standalone_viewer_html(metadata, output_dir):
                         turning: function(event, page, view) {{
                             updatePageInfo(page);
                             updateThumbnails(page);
-                            if (audioEnabled) {{
-                                pageFlipSound.currentTime = 0;
-                                pageFlipSound.play().catch(e => console.log('Audio failed:', e));
-                            }}
+                        }},
+                        turned: function(event, page, view) {{
+                            console.log('Current page:', page);
                         }}
                     }}
                 }});
                 
+                addFlipAreas();
+                
                 updatePageInfo(1);
                 updateThumbnails(1);
+            }}
+            
+            function addFlipAreas() {{
+                const flipbookContainer = $('.flipbook-wrapper');
+                
+                // Create left flip area
+                const leftArea = $('<div class="page-flip-area left"></div>');
+                leftArea.on('click', function(e) {{
+                    $('#flipbook').turn('previous');
+                }});
+                
+                // Create right flip area
+                const rightArea = $('<div class="page-flip-area right"></div>');
+                rightArea.on('click', function(e) {{
+                    $('#flipbook').turn('next');
+                }});
+                
+                flipbookContainer.append(leftArea);
+                flipbookContainer.append(rightArea);
             }}
             
             function updatePageInfo(page) {{
@@ -391,6 +596,37 @@ def create_standalone_viewer_html(metadata, output_dir):
                 audioEnabled = !audioEnabled;
                 $(this).html(audioEnabled ? '🔊' : '🔇');
             }});
+
+            // Single page view
+            let isDoublePageView = true;
+            $('#singlePageBtn').click(function() {{
+                isDoublePageView = !isDoublePageView;
+                $('#flipbook').turn('display', isDoublePageView ? 'double' : 'single');
+                $(this).html(isDoublePageView ? '📄' : '📖');
+            }});
+
+            // Grid view
+            $('#gridViewBtn').click(function() {{
+                openGridView();
+            }});
+
+            // Help modal
+            $('#helpBtn').click(function() {{
+                openHelp();
+            }});
+
+            // Toggle thumbnails
+            $('#toggleThumbnailsBtn').click(function() {{
+                $('.thumbnails-panel').toggleClass('hidden');
+            }});
+            
+            // Play sound when page turns - use 'turning' event for immediate playback
+            $('#flipbook').on('turning', function() {{
+                if (audioEnabled) {{
+                    pageFlipSound.currentTime = 0;
+                    pageFlipSound.play().catch(e => console.log('Audio failed:', e));
+                }}
+            }});
             
             $(window).on('keydown', function(e) {{
                 if (e.keyCode === 37) $('#flipbook').turn('previous');
@@ -459,6 +695,54 @@ def create_standalone_viewer_html(metadata, output_dir):
             }});
             
             initFlipbook();
+        }});
+
+        function openGridView() {{
+            const gridContainer = $('#gridContainer');
+            gridContainer.empty();
+
+            for (let i = 1; i <= totalPages; i++) {{
+                const thumbnail = $(`.thumbnail-item[data-page="${{i}}"] img`).attr('src');
+                const gridItem = $(`
+                    <div class="grid-item" onclick="goToPageFromGrid(${{i}})">
+                        <img src="${{thumbnail}}" alt="Page ${{i}}">
+                        <div class="grid-item-number">${{i}}</div>
+                    </div>
+                `);
+                gridContainer.append(gridItem);
+            }}
+
+            $('#gridModal').addClass('active');
+        }}
+
+        function closeGridView() {{
+            $('#gridModal').removeClass('active');
+        }}
+
+        function goToPageFromGrid(page) {{
+            $('#flipbook').turn('page', page);
+            closeGridView();
+        }}
+
+        function openHelp() {{
+            $('#helpModal').addClass('active');
+            $('#helpOverlay').addClass('active');
+        }}
+
+        function closeHelp() {{
+            $('#helpModal').removeClass('active');
+            $('#helpOverlay').removeClass('active');
+        }}
+
+        $('#helpOverlay').click(function() {{
+            closeHelp();
+        }});
+
+        $(document).on('keydown', function(e) {{
+            if (e.keyCode === 27) {{ // ESC key
+                closeGridView();
+                closeHelp();
+            }}
         }});
     </script>
 </body>

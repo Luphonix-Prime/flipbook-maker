@@ -18,6 +18,11 @@ $(document).ready(function() {
                 turning: function(event, page, view) {
                     updatePageInfo(page);
                     updateThumbnails(page);
+                    // Play sound immediately when page starts turning
+                    if (audioEnabled) {
+                        pageFlipSound.currentTime = 0;
+                        pageFlipSound.play().catch(e => console.log('Audio playback failed:', e));
+                    }
                 },
                 turned: function(event, page, view) {
                     console.log('Current page:', page);
@@ -38,25 +43,6 @@ $(document).ready(function() {
         // Remove existing areas if any
         $('.page-flip-area, .page-corner-overlay, .hand-indicator, .page-curl').remove();
         
-        // Create left flip area (click to previous page)
-        const leftArea = $('<div class="page-flip-area left"></div>');
-        leftArea.on('click', function(e) {
-            if (!$(e.target).hasClass('page-corner-overlay')) {
-                $('#flipbook').turn('previous');
-            }
-        });
-        
-        // Create right flip area (click to next page)
-        const rightArea = $('<div class="page-flip-area right"></div>');
-        rightArea.on('click', function(e) {
-            if (!$(e.target).hasClass('page-corner-overlay')) {
-                $('#flipbook').turn('next');
-            }
-        });
-        
-        flipbookContainer.append(leftArea);
-        flipbookContainer.append(rightArea);
-        
         // Add interactive page corners for dragging
         addDraggableCorners();
     }
@@ -70,12 +56,6 @@ $(document).ready(function() {
         flipbook.append(rightCurl);
         flipbook.append(leftCurl);
         
-        // Add hand indicators
-        const rightHand = $('<div class="hand-indicator">👆</div>');
-        const leftHand = $('<div class="hand-indicator left">👆</div>');
-        flipbook.append(rightHand);
-        flipbook.append(leftHand);
-        
         // Right corner for next page
         const rightCorner = $('<div class="page-corner-overlay"></div>');
         let isDragging = false;
@@ -88,7 +68,6 @@ $(document).ready(function() {
             startX = e.pageX || e.originalEvent.touches[0].pageX;
             rightCorner.addClass('dragging');
             rightCurl.addClass('dragging');
-            rightHand.hide();
         });
         
         $(document).on('mousemove touchmove', function(e) {
@@ -124,7 +103,6 @@ $(document).ready(function() {
             }
             
             dragDistance = 0;
-            rightHand.show();
         });
         
         // Left corner for previous page
@@ -139,7 +117,6 @@ $(document).ready(function() {
             leftStartX = e.pageX || e.originalEvent.touches[0].pageX;
             leftCorner.addClass('dragging');
             leftCurl.addClass('dragging');
-            leftHand.hide();
         });
         
         $(document).on('mousemove touchmove', function(e) {
@@ -177,7 +154,6 @@ $(document).ready(function() {
             }
             
             leftDragDistance = 0;
-            leftHand.show();
         });
         
         flipbook.append(rightCorner);
@@ -290,18 +266,12 @@ $(document).ready(function() {
         window.print();
     });
     
-    // Page flip sound
+    // Page flip sound - preload to reduce latency
     let audioEnabled = true;
-    const pageFlipSound = new Audio('/static/audio/page-flip.mp3');
+    const pageFlipSound = new Audio('/static/audio/page-flp.mp3');
     pageFlipSound.volume = 0.7;
-    
-    // Play sound when page turns
-    $('#flipbook').on('turned', function() {
-        if (audioEnabled) {
-            pageFlipSound.currentTime = 0;
-            pageFlipSound.play().catch(e => console.log('Audio failed:', e));
-        }
-    });
+    pageFlipSound.preload = 'auto';
+    pageFlipSound.load(); // Force preload
     
     // Toggle sound on/off
     $('#audioBtn').html('🔊');
