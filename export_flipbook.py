@@ -130,7 +130,6 @@ def create_standalone_viewer_html(metadata, output_dir):
         .thumbnail-item img {{
             width: 100%;
             display: block;
-            border-radius: 3px;
         }}
 
         .thumbnail-number {{
@@ -156,7 +155,8 @@ def create_standalone_viewer_html(metadata, output_dir):
         #flipbook {{
             width: 800px;
             height: 600px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border-radius: 0;
         }}
 
         #flipbook .page {{
@@ -164,7 +164,7 @@ def create_standalone_viewer_html(metadata, output_dir):
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+            box-shadow: none;
         }}
 
         #flipbook .page img {{
@@ -210,6 +210,24 @@ def create_standalone_viewer_html(metadata, output_dir):
             cursor: not-allowed;
         }}
 
+        #prevBtn {{
+            background: linear-gradient(180deg, #4a7c9e 0%, #3a6c8e 100%);
+            border-left: 3px solid #2a5c7e;
+        }}
+
+        #prevBtn:hover {{
+            background: linear-gradient(180deg, #5a8cae 0%, #4a7c9e 100%);
+        }}
+
+        #nextBtn {{
+            background: linear-gradient(180deg, #4a9e7c 0%, #3a8e6c 100%);
+            border-right: 3px solid #2a7e5c;
+        }}
+
+        #nextBtn:hover {{
+            background: linear-gradient(180deg, #5aae8c 0%, #4a9e7c 100%);
+        }}
+
         .page-curl {{
             position: absolute;
             bottom: 0;
@@ -221,18 +239,15 @@ def create_standalone_viewer_html(metadata, output_dir):
             transition: all 0.35s cubic-bezier(0.4, 0.0, 0.2, 1);
             pointer-events: none;
             z-index: 150;
+            display: none;
         }}
 
         .page-curl.right {{
             right: 0;
-            border-bottom-color: rgba(0, 0, 0, 0.15);
-            border-left-color: rgba(255, 255, 255, 0.3);
         }}
 
         .page-curl.left {{
             left: 0;
-            border-bottom-color: rgba(0, 0, 0, 0.15);
-            border-right-color: rgba(255, 255, 255, 0.3);
         }}
 
         .page-flip-area {{
@@ -428,7 +443,7 @@ def create_standalone_viewer_html(metadata, output_dir):
         </div>
         
         <div class="controls">
-            <button id="prevBtn" class="control-btn">◀ Previous</button>
+            <button id="prevBtn" class="control-btn">◄ Previous</button>
             <button id="singlePageBtn" class="control-btn" title="Single Page View">📄</button>
             <button id="gridViewBtn" class="control-btn" title="Grid View">🔲</button>
             <button id="helpBtn" class="control-btn" title="Help">❗</button>
@@ -438,11 +453,8 @@ def create_standalone_viewer_html(metadata, output_dir):
             <button id="zoomInBtn" class="control-btn">Zoom +</button>
             <button id="fullscreenBtn" class="control-btn">⛶ Fullscreen</button>
             <button id="printBtn" class="control-btn">🖨️ Print</button>
-            <button id="nextBtn" class="control-btn">Next ▶</button>
+            <button id="nextBtn" class="control-btn">Next ►</button>
         </div>
-        
-        <div class="page-curl right"></div>
-        <div class="page-curl left"></div>
     </div>
 
     <div class="grid-modal" id="gridModal">
@@ -631,67 +643,6 @@ def create_standalone_viewer_html(metadata, output_dir):
             $(window).on('keydown', function(e) {{
                 if (e.keyCode === 37) $('#flipbook').turn('previous');
                 else if (e.keyCode === 39) $('#flipbook').turn('next');
-            }});
-            
-            // Page curl drag effects
-            const rightCurl = $('.page-curl.right');
-            const leftCurl = $('.page-curl.left');
-            let startX, currentX, dragDistance;
-            let leftStartX, leftDragDistance;
-            
-            $('.flipbook-wrapper').on('mousedown touchstart', function(e) {{
-                const x = e.pageX || e.originalEvent.touches[0].pageX;
-                const containerWidth = $(this).width();
-                const clickPosition = x - $(this).offset().left;
-                
-                if (clickPosition > containerWidth / 2) {{
-                    startX = x;
-                }} else {{
-                    leftStartX = x;
-                }}
-            }});
-            
-            $('.flipbook-wrapper').on('mousemove touchmove', function(e) {{
-                const x = e.pageX || e.originalEvent.touches[0].pageX;
-                
-                if (startX) {{
-                    currentX = x;
-                    dragDistance = startX - currentX;
-                    
-                    if (dragDistance > 0) {{
-                        const curlSize = Math.min(dragDistance * 0.8, 200);
-                        rightCurl.addClass('active').css({{
-                            'border-bottom-width': curlSize + 'px',
-                            'border-left-width': curlSize + 'px'
-                        }});
-                    }}
-                }}
-                
-                if (leftStartX) {{
-                    currentX = x;
-                    leftDragDistance = currentX - leftStartX;
-                    
-                    if (leftDragDistance > 0) {{
-                        const curlSize = Math.min(leftDragDistance * 0.8, 200);
-                        leftCurl.addClass('active').css({{
-                            'border-bottom-width': curlSize + 'px',
-                            'border-right-width': curlSize + 'px'
-                        }});
-                    }}
-                }}
-            }});
-            
-            $('.flipbook-wrapper').on('mouseup mouseleave touchend', function() {{
-                rightCurl.removeClass('active').css({{
-                    'border-bottom-width': '0',
-                    'border-left-width': '0'
-                }});
-                leftCurl.removeClass('active').css({{
-                    'border-bottom-width': '0',
-                    'border-right-width': '0'
-                }});
-                startX = null;
-                leftStartX = null;
             }});
             
             initFlipbook();

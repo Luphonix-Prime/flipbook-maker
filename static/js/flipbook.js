@@ -251,9 +251,17 @@ $(document).ready(function() {
         $('#flipbook').turn('resize');
     });
     
+    // Single page view toggle
+    let isDoublePageView = true;
+    $('#singlePageBtn').click(function() {
+        isDoublePageView = !isDoublePageView;
+        $('#flipbook').turn('display', isDoublePageView ? 'double' : 'single');
+        $(this).html(isDoublePageView ? '📄' : '📖');
+    });
+    
     // Grid view (show all pages)
     $('#gridViewBtn').click(function() {
-        alert('Grid view feature - showing all pages in a grid layout (feature can be enhanced)');
+        openGridView();
     });
     
     // Download original PDF
@@ -358,6 +366,85 @@ $(document).ready(function() {
             btn.prop('disabled', false);
         }
     });
+    
+    // Grid view modal
+    function openGridView() {
+        const gridModal = $('<div class="grid-modal"></div>');
+        const closeBtn = $('<button class="grid-close">✕ Close Grid View</button>');
+        const gridContainer = $('<div class="grid-container"></div>');
+        
+        for (let i = 1; i <= totalPages; i++) {
+            const thumbnail = $(`.thumbnail-item[data-page="${i}"] img`).attr('src');
+            const gridItem = $(`
+                <div class="grid-item" data-page="${i}">
+                    <img src="${thumbnail}" alt="Page ${i}">
+                    <div class="grid-item-number">${i}</div>
+                </div>
+            `);
+            gridItem.on('click', function() {
+                const page = $(this).data('page');
+                $('#flipbook').turn('page', page);
+                gridModal.remove();
+            });
+            gridContainer.append(gridItem);
+        }
+        
+        closeBtn.on('click', function() {
+            gridModal.remove();
+        });
+        
+        gridModal.append(closeBtn);
+        gridModal.append(gridContainer);
+        $('body').append(gridModal);
+        
+        setTimeout(() => gridModal.addClass('active'), 10);
+    }
+    
+    // Help modal
+    $('#helpBtn').click(function() {
+        openHelp();
+    });
+    
+    function openHelp() {
+        const helpOverlay = $('<div class="help-overlay"></div>');
+        const helpModal = $(`
+            <div class="help-modal">
+                <h2>📖 Flipbook Controls</h2>
+                <ul>
+                    <li><strong>◀ ▶ Buttons:</strong> Navigate between pages</li>
+                    <li><strong>📄 Single Page:</strong> Toggle single/double page view</li>
+                    <li><strong>⊞ Grid View:</strong> See all pages at once</li>
+                    <li><strong>⬇ Download:</strong> Download original PDF</li>
+                    <li><strong>🖨️ Print:</strong> Print all pages</li>
+                    <li><strong>🔊 Audio:</strong> Toggle page flip sound</li>
+                    <li><strong>Zoom +/-:</strong> Adjust flipbook size</li>
+                    <li><strong>⛶ Fullscreen:</strong> Enter fullscreen mode</li>
+                    <li><strong>💾 Export:</strong> Create standalone .exe</li>
+                    <li><strong>Arrow Keys:</strong> Navigate pages</li>
+                    <li><strong>Click Edges:</strong> Turn pages</li>
+                </ul>
+                <button class="help-close">Got it!</button>
+            </div>
+        `);
+        
+        helpOverlay.on('click', function() {
+            helpOverlay.remove();
+            helpModal.remove();
+        });
+        
+        helpModal.find('.help-close').on('click', function() {
+            helpOverlay.remove();
+            helpModal.remove();
+        });
+        
+        $('body').append(helpOverlay);
+        $('body').append(helpModal);
+        
+        setTimeout(() => {
+            helpOverlay.addClass('active');
+            helpModal.addClass('active');
+        }, 10);
+    }
     
     initFlipbook();
 });
