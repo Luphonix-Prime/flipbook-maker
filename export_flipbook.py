@@ -483,44 +483,56 @@ def create_standalone_viewer_html(metadata, output_dir):
     <script>
         const totalPages = {metadata['total_pages']};
         
+        let currentZoom = 1;
+        let flipbookWidth = 800;
+        let flipbookHeight = 600;
+        
+        // Page flip audio - preload to reduce latency
+        let audioEnabled = true;
+        const pageFlipSound = new Audio('page-flp.mp3');
+        pageFlipSound.volume = 0.7;
+        pageFlipSound.preload = 'auto';
+        pageFlipSound.load(); // Force preload
+        
         $(document).ready(function() {{
-            let currentZoom = 1;
-            let flipbookWidth = 800;
-            let flipbookHeight = 600;
-            
-            // Page flip audio - preload to reduce latency
-            let audioEnabled = true;
-            const pageFlipSound = new Audio('page-flp.mp3');
-            pageFlipSound.volume = 0.7;
-            pageFlipSound.preload = 'auto';
-            pageFlipSound.load(); // Force preload
+            console.log('Document ready, initializing...');
             
             function initFlipbook() {{
-                $('#flipbook').turn({{
-                    width: flipbookWidth,
-                    height: flipbookHeight,
-                    elevation: 50,
-                    gradients: true,
-                    autoCenter: true,
-                    duration: 1500,
-                    acceleration: true,
-                    pages: totalPages,
-                    when: {{
-                        turning: function(event, page, view) {{
-                            updatePageInfo(page);
-                            updateThumbnails(page);
-                        }},
-                        turned: function(event, page, view) {{
-                            console.log('Current page:', page);
-                            updatePageInfo(page);
+                try {{
+                    $('#flipbook').turn({{
+                        width: flipbookWidth,
+                        height: flipbookHeight,
+                        elevation: 50,
+                        gradients: true,
+                        autoCenter: true,
+                        duration: 1500,
+                        acceleration: true,
+                        pages: totalPages,
+                        when: {{
+                            turning: function(event, page, view) {{
+                                console.log('Turning to page:', page);
+                                updatePageInfo(page);
+                                updateThumbnails(page);
+                                // Play sound
+                                if (audioEnabled) {{
+                                    pageFlipSound.currentTime = 0;
+                                    pageFlipSound.play().catch(e => console.log('Audio failed:', e));
+                                }}
+                            }},
+                            turned: function(event, page, view) {{
+                                console.log('Current page:', page);
+                                updatePageInfo(page);
+                            }}
                         }}
-                    }}
-                }});
-                
-                addFlipAreas();
-                
-                updatePageInfo(1);
-                updateThumbnails(1);
+                    }});
+                    
+                    console.log('Flipbook initialized successfully');
+                    addFlipAreas();
+                    updatePageInfo(1);
+                    updateThumbnails(1);
+                }} catch(err) {{
+                    console.error('Error initializing flipbook:', err);
+                }}
             }}
             
             function addFlipAreas() {{
@@ -680,14 +692,6 @@ def create_standalone_viewer_html(metadata, output_dir):
                 console.log('Thumbnails toggled');
             }});
             
-            // Play sound when page turns - use 'turning' event for immediate playback
-            $('#flipbook').on('turning', function() {{
-                if (audioEnabled) {{
-                    pageFlipSound.currentTime = 0;
-                    pageFlipSound.play().catch(e => console.log('Audio failed:', e));
-                }}
-            }});
-            
             // Keyboard navigation with boundary checks
             $(document).on('keydown', function(e) {{
                 const currentPage = $('#flipbook').turn('page');
@@ -698,7 +702,22 @@ def create_standalone_viewer_html(metadata, output_dir):
                 }}
             }});
             
+            // Initialize flipbook
             initFlipbook();
+            
+            // Verify all buttons are initialized
+            console.log('Buttons initialized:');
+            console.log('- Prev:', $('#prevBtn').length > 0);
+            console.log('- Next:', $('#nextBtn').length > 0);
+            console.log('- Single Page:', $('#singlePageBtn').length > 0);
+            console.log('- Grid View:', $('#gridViewBtn').length > 0);
+            console.log('- Help:', $('#helpBtn').length > 0);
+            console.log('- Thumbnails:', $('#toggleThumbnailsBtn').length > 0);
+            console.log('- Audio:', $('#audioBtn').length > 0);
+            console.log('- Zoom In:', $('#zoomInBtn').length > 0);
+            console.log('- Zoom Out:', $('#zoomOutBtn').length > 0);
+            console.log('- Fullscreen:', $('#fullscreenBtn').length > 0);
+            console.log('- Print:', $('#printBtn').length > 0);
         }});
 
         function openGridView() {{
