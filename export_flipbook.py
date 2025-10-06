@@ -591,17 +591,21 @@ def create_standalone_viewer_html(metadata, output_dir):
                 $('#flipbook').turn('page', page);
             }});
             
-            $('#zoomInBtn').click(function() {{
+            // Zoom In button with boundary check
+            $('#zoomInBtn').on('click', function() {{
                 if (currentZoom < 1.5) {{
                     currentZoom += 0.1;
                     applyZoom();
+                    console.log('Zoom level:', currentZoom);
                 }}
             }});
             
-            $('#zoomOutBtn').click(function() {{
+            // Zoom Out button with boundary check
+            $('#zoomOutBtn').on('click', function() {{
                 if (currentZoom > 0.6) {{
                     currentZoom -= 0.1;
                     applyZoom();
+                    console.log('Zoom level:', currentZoom);
                 }}
             }});
             
@@ -611,48 +615,69 @@ def create_standalone_viewer_html(metadata, output_dir):
                 $('#flipbook').turn('size', newWidth, newHeight);
             }}
             
-            $('#fullscreenBtn').click(function() {{
+            // Fullscreen toggle button
+            $('#fullscreenBtn').on('click', function() {{
                 const elem = document.querySelector('.flipbook-container');
                 if (!document.fullscreenElement) {{
-                    if (elem.requestFullscreen) elem.requestFullscreen();
-                    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+                    if (elem.requestFullscreen) {{
+                        elem.requestFullscreen();
+                    }} else if (elem.webkitRequestFullscreen) {{
+                        elem.webkitRequestFullscreen();
+                    }} else if (elem.msRequestFullscreen) {{
+                        elem.msRequestFullscreen();
+                    }}
+                    console.log('Entering fullscreen');
                 }} else {{
-                    if (document.exitFullscreen) document.exitFullscreen();
-                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                    if (document.exitFullscreen) {{
+                        document.exitFullscreen();
+                    }} else if (document.webkitExitFullscreen) {{
+                        document.webkitExitFullscreen();
+                    }} else if (document.msExitFullscreen) {{
+                        document.msExitFullscreen();
+                    }}
+                    console.log('Exiting fullscreen');
                 }}
             }});
             
-            $('#printBtn').click(function() {{
+            // Print button
+            $('#printBtn').on('click', function() {{
+                console.log('Opening print dialog');
                 window.print();
             }});
             
+            // Audio toggle button - initialize
             $('#audioBtn').html('🔊');
-            $('#audioBtn').click(function() {{
+            $('#audioBtn').on('click', function() {{
                 audioEnabled = !audioEnabled;
                 $(this).html(audioEnabled ? '🔊' : '🔇');
+                console.log('Audio enabled:', audioEnabled);
             }});
 
-            // Single page view
+            // Single page view toggle
             let isDoublePageView = true;
-            $('#singlePageBtn').click(function() {{
+            $('#singlePageBtn').on('click', function() {{
                 isDoublePageView = !isDoublePageView;
                 $('#flipbook').turn('display', isDoublePageView ? 'double' : 'single');
                 $(this).html(isDoublePageView ? '📄' : '📖');
+                console.log('Single page view:', !isDoublePageView);
             }});
 
             // Grid view
-            $('#gridViewBtn').click(function() {{
+            $('#gridViewBtn').on('click', function() {{
+                console.log('Opening grid view');
                 openGridView();
             }});
 
             // Help modal
-            $('#helpBtn').click(function() {{
+            $('#helpBtn').on('click', function() {{
+                console.log('Opening help');
                 openHelp();
             }});
 
-            // Toggle thumbnails
-            $('#toggleThumbnailsBtn').click(function() {{
+            // Toggle thumbnails panel
+            $('#toggleThumbnailsBtn').on('click', function() {{
                 $('.thumbnails-panel').toggleClass('hidden');
+                console.log('Thumbnails toggled');
             }});
             
             // Play sound when page turns - use 'turning' event for immediate playback
