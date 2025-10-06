@@ -114,6 +114,14 @@ def export_exe(flipbook_id):
         'message': 'Export started. This may take a few minutes...'
     })
 
+@app.route('/download-pdf/<flipbook_id>')
+def download_pdf(flipbook_id):
+    """Download the original PDF file"""
+    pdf_path = os.path.join('uploads', f'{flipbook_id}.pdf')
+    if os.path.exists(pdf_path):
+        return send_file(pdf_path, as_attachment=True, download_name=f'{flipbook_id}.pdf')
+    return jsonify({'error': 'PDF not found'}), 404
+
 @app.route('/download/<flipbook_id>')
 def download_exe(flipbook_id):
     exe_path = os.path.join('output_exe', f'{flipbook_id}.exe')
