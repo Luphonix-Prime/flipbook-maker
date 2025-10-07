@@ -239,7 +239,6 @@ def create_standalone_viewer_html(metadata, output_dir):
             transition: all 0.35s cubic-bezier(0.4, 0.0, 0.2, 1);
             pointer-events: none;
             z-index: 150;
-            display: none;
         }}
 
         .page-curl.right {{
@@ -250,13 +249,53 @@ def create_standalone_viewer_html(metadata, output_dir):
             left: 0;
         }}
 
+        .page-curl.active {{
+            border-color: transparent transparent rgba(200, 200, 200, 0.8) transparent;
+            box-shadow: -4px 4px 12px rgba(0,0,0,0.4);
+        }}
+
+        .page-curl.dragging {{
+            transition: none;
+        }}
+
+        .page-curl.left-curl {{
+            left: 0;
+            right: auto;
+        }}
+
+        .page-corner-overlay {{
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            bottom: 0;
+            right: 0;
+            z-index: 200;
+            cursor: grab;
+            pointer-events: auto;
+        }}
+
+        .page-corner-overlay.dragging {{
+            cursor: grabbing;
+        }}
+
+        .page-corner-overlay.left-corner {{
+            right: auto;
+            left: 0;
+            transform: scaleX(-1);
+        }}
+
         .page-flip-area {{
             position: absolute;
             top: 0;
             bottom: 0;
-            width: 50%;
+            width: 80px;
             cursor: pointer;
             z-index: 100;
+            transition: background 0.3s ease;
+        }}
+
+        .page-flip-area:hover {{
+            background: rgba(255, 255, 255, 0.05);
         }}
 
         .page-flip-area.left {{
@@ -483,75 +522,177 @@ def create_standalone_viewer_html(metadata, output_dir):
     <script>
         const totalPages = {metadata['total_pages']};
         
-        let currentZoom = 1;
-        let flipbookWidth = 800;
-        let flipbookHeight = 600;
-        
-        // Page flip audio - preload to reduce latency
-        let audioEnabled = true;
-        const pageFlipSound = new Audio('page-flp.mp3');
-        pageFlipSound.volume = 0.7;
-        pageFlipSound.preload = 'auto';
-        pageFlipSound.load(); // Force preload
-        
         $(document).ready(function() {{
-            console.log('Document ready, initializing...');
+            let currentZoom = 1;
+            let flipbookWidth = 800;
+            let flipbookHeight = 600;
+            
+            // Page flip audio - preload to reduce latency
+            let audioEnabled = true;
+            const pageFlipSound = new Audio('page-flp.mp3');
+            pageFlipSound.volume = 0.7;
+            pageFlipSound.preload = 'auto';
+            pageFlipSound.load(); // Force preload
             
             function initFlipbook() {{
-                try {{
-                    $('#flipbook').turn({{
-                        width: flipbookWidth,
-                        height: flipbookHeight,
-                        elevation: 50,
-                        gradients: true,
-                        autoCenter: true,
-                        duration: 1500,
-                        acceleration: true,
-                        pages: totalPages,
-                        when: {{
-                            turning: function(event, page, view) {{
-                                console.log('Turning to page:', page);
-                                updatePageInfo(page);
-                                updateThumbnails(page);
-                                // Play sound
-                                if (audioEnabled) {{
-                                    pageFlipSound.currentTime = 0;
-                                    pageFlipSound.play().catch(e => console.log('Audio failed:', e));
-                                }}
-                            }},
-                            turned: function(event, page, view) {{
-                                console.log('Current page:', page);
-                                updatePageInfo(page);
-                            }}
+                $('#flipbook').turn({{
+                    width: flipbookWidth,
+                    height: flipbookHeight,
+                    elevation: 50,
+                    gradients: true,
+                    autoCenter: true,
+                    duration: 1500,
+                    acceleration: true,
+                    pages: totalPages,
+                    when: {{
+                        turning: function(event, page, view) {{
+                            updatePageInfo(page);
+                            updateThumbnails(page);
+                        }},
+                        turned: function(event, page, view) {{
+                            console.log('Current page:', page);
                         }}
-                    }});
-                    
-                    console.log('Flipbook initialized successfully');
-                    addFlipAreas();
-                    updatePageInfo(1);
-                    updateThumbnails(1);
-                }} catch(err) {{
-                    console.error('Error initializing flipbook:', err);
-                }}
+                    }}
+                }});
+                
+                addFlipAreas();
+                
+                updatePageInfo(1);
+                updateThumbnails(1);
             }}
             
-          
+            function addFlipAreas() {{
+                const flipbook = $('#flipbook');
+                
+                // Remove existing areas if any
+                $('.page-flip-area, .page-corner-overlay, .page-curl').remove();
+                
+                // Add page curl effect elements
+                const rightCurl = $('<div class="page-curl right"></div>');
+                const leftCurl = $('<div class="page-curl left-curl"></div>');
+                flipbook.append(rightCurl);
+                flipbook.append(leftCurl);
+                
+                // Right corner for next page
+                const rightCorner = $('<div class="page-corner-overlay"></div>');
+                let isDragging = false;
+                let startX = 0;
+                let dragDistance = 0;
+                
+                rightCorner.on('mousedown touchstart', function(e) {{
+                    e.preventDefault();
+                    isDragging = true;
+                    startX = e.pageX || e.originalEvent.touches[0].pageX;
+                    rightCorner.addClass('dragging');
+                    rightCurl.addClass('dragging');
+                }});
+                
+                $(document).on('mousemove touchmove', function(e) {{
+                    if (!isDragging) return;
+                    
+                    const currentX = e.pageX || e.originalEvent.touches[0].pageX;
+                    dragDistance = startX - currentX;
+                    
+                    if (dragDistance > 0) {{
+                        requestAnimationFrame(() => {{
+                            const curlSize = Math.min(dragDistance * 0.8, 200);
+                            rightCurl.addClass('active').css({{
+                                'border-bottom-width': curlSize + 'px',
+                                'border-left-width': curlSize + 'px'
+                            }});
+                        }});
+                    }}
+                }});
+                
+                $(document).on('mouseup touchend', function() {{
+                    if (!isDragging) return;
+                    
+                    isDragging = false;
+                    rightCorner.removeClass('dragging');
+                    rightCurl.removeClass('dragging active').css({{
+                        'border-bottom-width': '0',
+                        'border-left-width': '0'
+                    }});
+                    
+                    // If dragged enough, flip the page
+                    if (dragDistance > 100) {{
+                        flipbook.turn('next');
+                    }}
+                    
+                    dragDistance = 0;
+                }});
+                
+                // Left corner for previous page
+                const leftCorner = $('<div class="page-corner-overlay left-corner"></div>');
+                let isLeftDragging = false;
+                let leftStartX = 0;
+                let leftDragDistance = 0;
+                
+                leftCorner.on('mousedown touchstart', function(e) {{
+                    e.preventDefault();
+                    isLeftDragging = true;
+                    leftStartX = e.pageX || e.originalEvent.touches[0].pageX;
+                    leftCorner.addClass('dragging');
+                    leftCurl.addClass('dragging');
+                }});
+                
+                $(document).on('mousemove touchmove', function(e) {{
+                    if (!isLeftDragging) return;
+                    
+                    const currentX = e.pageX || e.originalEvent.touches[0].pageX;
+                    leftDragDistance = currentX - leftStartX;
+                    
+                    if (leftDragDistance > 0) {{
+                        requestAnimationFrame(() => {{
+                            const curlSize = Math.min(leftDragDistance * 0.8, 200);
+                            leftCurl.addClass('active').css({{
+                                'border-bottom-width': curlSize + 'px',
+                                'border-right-width': curlSize + 'px',
+                                'left': '0',
+                                'right': 'auto'
+                            }});
+                        }});
+                    }}
+                }});
+                
+                $(document).on('mouseup touchend', function() {{
+                    if (!isLeftDragging) return;
+                    
+                    isLeftDragging = false;
+                    leftCorner.removeClass('dragging');
+                    leftCurl.removeClass('dragging active').css({{
+                        'border-bottom-width': '0',
+                        'border-right-width': '0'
+                    }});
+                    
+                    // If dragged enough, flip to previous page
+                    if (leftDragDistance > 100) {{
+                        flipbook.turn('previous');
+                    }}
+                    
+                    leftDragDistance = 0;
+                }});
+                
+                flipbook.append(rightCorner);
+                flipbook.append(leftCorner);
+                
+                // Create click flip areas
+                const leftArea = $('<div class="page-flip-area left"></div>');
+                leftArea.on('click', function(e) {{
+                    $('#flipbook').turn('previous');
+                }});
+                
+                const rightArea = $('<div class="page-flip-area right"></div>');
+                rightArea.on('click', function(e) {{
+                    $('#flipbook').turn('next');
+                }});
+                
+                flipbook.append(leftArea);
+                flipbook.append(rightArea);
+            }}
+            
             function updatePageInfo(page) {{
                 $('#currentPage').text(page);
-                
-                // Update Previous button state
-                if (page <= 1) {{
-                    $('#prevBtn').prop('disabled', true).css('opacity', '0.5');
-                }} else {{
-                    $('#prevBtn').prop('disabled', false).css('opacity', '1');
-                }}
-                
-                // Update Next button state
-                if (page >= totalPages) {{
-                    $('#nextBtn').prop('disabled', true).css('opacity', '0.5');
-                }} else {{
-                    $('#nextBtn').prop('disabled', false).css('opacity', '1');
-                }}
             }}
             
             function updateThumbnails(page) {{
@@ -564,20 +705,12 @@ def create_standalone_viewer_html(metadata, output_dir):
                 }}
             }}
             
-            // Previous button with boundary check
-            $('#prevBtn').on('click', function() {{
-                const currentPage = $('#flipbook').turn('page');
-                if (currentPage > 1) {{
-                    $('#flipbook').turn('previous');
-                }}
+            $('#prevBtn').click(function() {{
+                $('#flipbook').turn('previous');
             }});
             
-            // Next button with boundary check
-            $('#nextBtn').on('click', function() {{
-                const currentPage = $('#flipbook').turn('page');
-                if (currentPage < totalPages) {{
-                    $('#flipbook').turn('next');
-                }}
+            $('#nextBtn').click(function() {{
+                $('#flipbook').turn('next');
             }});
             
             $('.thumbnail-item').click(function() {{
@@ -585,21 +718,17 @@ def create_standalone_viewer_html(metadata, output_dir):
                 $('#flipbook').turn('page', page);
             }});
             
-            // Zoom In button with boundary check
-            $('#zoomInBtn').on('click', function() {{
+            $('#zoomInBtn').click(function() {{
                 if (currentZoom < 1.5) {{
                     currentZoom += 0.1;
                     applyZoom();
-                    console.log('Zoom level:', currentZoom);
                 }}
             }});
             
-            // Zoom Out button with boundary check
-            $('#zoomOutBtn').on('click', function() {{
+            $('#zoomOutBtn').click(function() {{
                 if (currentZoom > 0.6) {{
                     currentZoom -= 0.1;
                     applyZoom();
-                    console.log('Zoom level:', currentZoom);
                 }}
             }});
             
@@ -609,97 +738,64 @@ def create_standalone_viewer_html(metadata, output_dir):
                 $('#flipbook').turn('size', newWidth, newHeight);
             }}
             
-            // Fullscreen toggle button
-            $('#fullscreenBtn').on('click', function() {{
+            $('#fullscreenBtn').click(function() {{
                 const elem = document.querySelector('.flipbook-container');
                 if (!document.fullscreenElement) {{
-                    if (elem.requestFullscreen) {{
-                        elem.requestFullscreen();
-                    }} else if (elem.webkitRequestFullscreen) {{
-                        elem.webkitRequestFullscreen();
-                    }} else if (elem.msRequestFullscreen) {{
-                        elem.msRequestFullscreen();
-                    }}
-                    console.log('Entering fullscreen');
+                    if (elem.requestFullscreen) elem.requestFullscreen();
+                    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
                 }} else {{
-                    if (document.exitFullscreen) {{
-                        document.exitFullscreen();
-                    }} else if (document.webkitExitFullscreen) {{
-                        document.webkitExitFullscreen();
-                    }} else if (document.msExitFullscreen) {{
-                        document.msExitFullscreen();
-                    }}
-                    console.log('Exiting fullscreen');
+                    if (document.exitFullscreen) document.exitFullscreen();
+                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
                 }}
             }});
             
-            // Print button
-            $('#printBtn').on('click', function() {{
-                console.log('Opening print dialog');
+            $('#printBtn').click(function() {{
                 window.print();
             }});
             
-            // Audio toggle button - initialize
             $('#audioBtn').html('🔊');
-            $('#audioBtn').on('click', function() {{
+            $('#audioBtn').click(function() {{
                 audioEnabled = !audioEnabled;
                 $(this).html(audioEnabled ? '🔊' : '🔇');
-                console.log('Audio enabled:', audioEnabled);
             }});
 
-            // Single page view toggle
+            // Single page view
             let isDoublePageView = true;
-            $('#singlePageBtn').on('click', function() {{
+            $('#singlePageBtn').click(function() {{
                 isDoublePageView = !isDoublePageView;
                 $('#flipbook').turn('display', isDoublePageView ? 'double' : 'single');
                 $(this).html(isDoublePageView ? '📄' : '📖');
-                console.log('Single page view:', !isDoublePageView);
             }});
 
             // Grid view
-            $('#gridViewBtn').on('click', function() {{
-                console.log('Opening grid view');
+            $('#gridViewBtn').click(function() {{
                 openGridView();
             }});
 
             // Help modal
-            $('#helpBtn').on('click', function() {{
-                console.log('Opening help');
+            $('#helpBtn').click(function() {{
                 openHelp();
             }});
 
-            // Toggle thumbnails panel
-            $('#toggleThumbnailsBtn').on('click', function() {{
+            // Toggle thumbnails
+            $('#toggleThumbnailsBtn').click(function() {{
                 $('.thumbnails-panel').toggleClass('hidden');
-                console.log('Thumbnails toggled');
             }});
             
-            // Keyboard navigation with boundary checks
-            $(document).on('keydown', function(e) {{
-                const currentPage = $('#flipbook').turn('page');
-                if (e.keyCode === 37 && currentPage > 1) {{ // Left arrow
-                    $('#flipbook').turn('previous');
-                }} else if (e.keyCode === 39 && currentPage < totalPages) {{ // Right arrow
-                    $('#flipbook').turn('next');
+            // Play sound when page turns - use 'turning' event for immediate playback
+            $('#flipbook').on('turning', function() {{
+                if (audioEnabled) {{
+                    pageFlipSound.currentTime = 0;
+                    pageFlipSound.play().catch(e => console.log('Audio failed:', e));
                 }}
             }});
             
-            // Initialize flipbook
-            initFlipbook();
+            $(window).on('keydown', function(e) {{
+                if (e.keyCode === 37) $('#flipbook').turn('previous');
+                else if (e.keyCode === 39) $('#flipbook').turn('next');
+            }});
             
-            // Verify all buttons are initialized
-            console.log('Buttons initialized:');
-            console.log('- Prev:', $('#prevBtn').length > 0);
-            console.log('- Next:', $('#nextBtn').length > 0);
-            console.log('- Single Page:', $('#singlePageBtn').length > 0);
-            console.log('- Grid View:', $('#gridViewBtn').length > 0);
-            console.log('- Help:', $('#helpBtn').length > 0);
-            console.log('- Thumbnails:', $('#toggleThumbnailsBtn').length > 0);
-            console.log('- Audio:', $('#audioBtn').length > 0);
-            console.log('- Zoom In:', $('#zoomInBtn').length > 0);
-            console.log('- Zoom Out:', $('#zoomOutBtn').length > 0);
-            console.log('- Fullscreen:', $('#fullscreenBtn').length > 0);
-            console.log('- Print:', $('#printBtn').length > 0);
+            initFlipbook();
         }});
 
         function openGridView() {{
