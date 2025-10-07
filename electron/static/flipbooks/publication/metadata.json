@@ -1,0 +1,71 @@
+{
+  "filename": "publication.pdf",
+  "total_pages": 16,
+  "created_at": "2025-10-07T19:45:46.313230",
+  "pages": [
+    {
+      "page": 1,
+      "image": "flipbooks/publication/page_001.png"
+    },
+    {
+      "page": 2,
+      "image": "flipbooks/publication/page_002.png"
+    },
+    {
+      "page": 3,
+      "image": "flipbooks/publication/page_003.png"
+    },
+    {
+      "page": 4,
+      "image": "flipbooks/publication/page_004.png"
+    },
+    {
+      "page": 5,
+      "image": "flipbooks/publication/page_005.png"
+    },
+    {
+      "page": 6,
+      "image": "flipbooks/publication/page_006.png"
+    },
+    {
+      "page": 7,
+      "image": "flipbooks/publication/page_007.png"
+    },
+    {
+      "page": 8,
+      "image": "flipbooks/publication/page_008.png"
+    },
+    {
+      "page": 9,
+      "image": "flipbooks/publication/page_009.png"
+    },
+    {
+      "page": 10,
+      "image": "flipbooks/publication/page_010.png"
+    },
+    {
+      "page": 11,
+      "image": "flipbooks/publication/page_011.png"
+    },
+    {
+      "page": 12,
+      "image": "flipbooks/publication/page_012.png"
+    },
+    {
+      "page": 13,
+      "image": "flipbooks/publication/page_013.png"
+    },
+    {
+      "page": 14,
+      "image": "flipbooks/publication/page_014.png"
+    },
+    {
+      "page": 15,
+      "image": "flipbooks/publication/page_015.png"
+    },
+    {
+      "page": 16,
+      "image": "flipbooks/publication/page_016.png"
+    }
+  ]
+}

@@ -858,67 +858,76 @@ def create_standalone_viewer_html(metadata, output_dir):
 def build_exe(flipbook_id, flipbook_dir):
     print(f"Building .exe for flipbook: {flipbook_id}")
     
-    metadata_path = os.path.join(flipbook_dir, 'metadata.json')
-    with open(metadata_path, 'r') as f:
-        metadata = json.load(f)
-    
-    build_dir = os.path.join('output_exe', flipbook_id)
-    os.makedirs(build_dir, exist_ok=True)
-    
-    flipbook_data_dir = os.path.join(build_dir, 'flipbook_data')
-    if os.path.exists(flipbook_data_dir):
-        shutil.rmtree(flipbook_data_dir)
-    
-    shutil.copytree(flipbook_dir, flipbook_data_dir)
-    
-    create_standalone_viewer_html(metadata, flipbook_data_dir)
-    
-    launcher_path = os.path.abspath('flipbook_launcher.py')
-    
-    os.chdir(build_dir)
-    
-    pyinstaller_command = [
-        sys.executable, '-m', 'PyInstaller',
-        '--name', flipbook_id,
-        '--onefile',
-        '--windowed',
-        '--add-data', f'flipbook_data{os.pathsep}flipbook_data',
-        '--hidden-import', 'http.server',
-        '--hidden-import', 'webbrowser',
-        '--icon', 'NONE',
-        launcher_path
-    ]
-    
-    print("Running PyInstaller...")
-    result = subprocess.run(pyinstaller_command, capture_output=True, text=True)
-    
-    os.chdir('../..')
-    
-    exe_path = os.path.join(build_dir, 'dist', f'{flipbook_id}.exe')
-    if os.path.exists(exe_path):
-        final_exe = os.path.join('output_exe', f'{flipbook_id}.exe')
-        shutil.copy(exe_path, final_exe)
+    try:
+        # Use absolute paths
+        output_exe_dir = os.path.abspath('output_exe')
+        os.makedirs(output_exe_dir, exist_ok=True)
         
-        if os.path.exists(os.path.join(build_dir, 'build')):
-            shutil.rmtree(os.path.join(build_dir, 'build'))
-        if os.path.exists(os.path.join(build_dir, 'dist')):
-            shutil.rmtree(os.path.join(build_dir, 'dist'))
-        if os.path.exists(os.path.join(build_dir, f'{flipbook_id}.spec')):
-            os.remove(os.path.join(build_dir, f'{flipbook_id}.spec'))
+        build_dir = os.path.join(output_exe_dir, flipbook_id)
+        os.makedirs(build_dir, exist_ok=True)
         
-        print(f"✓ .exe created successfully: {final_exe}")
-        return final_exe
-    else:
-        print(f"Error: .exe file not found at {exe_path}")
-        print("PyInstaller output:", result.stdout)
-        print("PyInstaller errors:", result.stderr)
+        # Create work and dist directories
+        work_dir = os.path.join(build_dir, 'build')
+        dist_dir = os.path.join(build_dir, 'dist')
+        os.makedirs(work_dir, exist_ok=True)
+        os.makedirs(dist_dir, exist_ok=True)
+        
+        # PyInstaller command
+        pyinstaller_command = [
+            sys.executable, '-m', 'PyInstaller',
+            '--name', flipbook_id,
+            '--onefile',
+            '--windowed',
+            '--clean',
+            '--noconfirm',
+            f'--workpath={work_dir}',
+            f'--distpath={dist_dir}',
+            f'--specpath={build_dir}',
+            f'--add-data={flipbook_data_dir}{os.pathsep}flipbook_data',
+            '--hidden-import=http.server',
+            '--hidden-import=webbrowser',
+            '--hidden-import=socket',
+            '--hidden-import=threading',
+            launcher_path
+        ]
+        
+        print("Running PyInstaller with command:", ' '.join(pyinstaller_command))
+        result = subprocess.run(pyinstaller_command, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            print("PyInstaller output:", result.stdout)
+            print("PyInstaller errors:", result.stderr)
+            raise Exception("PyInstaller failed")
+        
+        # Change back to original directory
+        os.chdir(current_dir)
+        
+        # Check if exe was created
+        exe_path = os.path.join(build_dir, 'dist', f'{flipbook_id}.exe')
+        if os.path.exists(exe_path):
+            final_exe = os.path.join('output_exe', f'{flipbook_id}.exe')
+            shutil.copy(exe_path, final_exe)
+            
+            # Cleanup build files
+            shutil.rmtree(os.path.join(build_dir, 'build'), ignore_errors=True)
+            shutil.rmtree(os.path.join(build_dir, 'dist'), ignore_errors=True)
+            if os.path.exists(os.path.join(build_dir, f'{flipbook_id}.spec')):
+                os.remove(os.path.join(build_dir, f'{flipbook_id}.spec'))
+            
+            print(f"✓ .exe created successfully: {final_exe}")
+            return final_exe
+            
+        raise Exception("Executable not found after build")
+            
+    except Exception as e:
+        print(f"Error building executable: {str(e)}")
         return None
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
+    if len(sys.argv) != 2:
         print("Usage: python export_flipbook.py <flipbook_id>")
         sys.exit(1)
-    
+        
     flipbook_id = sys.argv[1]
     flipbook_dir = os.path.join('static', 'flipbooks', flipbook_id)
     
@@ -926,10 +935,10 @@ if __name__ == '__main__':
         print(f"Error: Flipbook directory not found: {flipbook_dir}")
         sys.exit(1)
     
-    exe_path = build_exe(flipbook_id, flipbook_dir)
-    if exe_path:
-        print(f"\nSuccess! Your flipbook .exe is ready:")
-        print(f"  {exe_path}")
+    result = build_exe(flipbook_id, flipbook_dir)
+    if result:
+        print("Export completed successfully")
+        sys.exit(0)
     else:
-        print("\nFailed to create .exe")
+        print("Export failed")
         sys.exit(1)

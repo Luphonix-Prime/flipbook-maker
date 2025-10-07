@@ -1,0 +1,17 @@
+{
+  "name": "flipbook-app",
+  "version": "1.0.0",
+  "description": "Flipbook Maker Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "prestart": "cd .. && pip install -r requirements.txt",
+    "start": "electron .",
+    "install-deps": "cd .. && pip install -r requirements.txt",
+    "postinstall": "npm run install-deps"
+  },
+  "dependencies": {
+    "electron": "^31.0.0",
+    "jquery": "^3.6.0",
+    "turn.js": "^3.0.0"
+  }
+}

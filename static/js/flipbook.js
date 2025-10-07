@@ -188,26 +188,33 @@ $(document).ready(function() {
         $('#flipbook').turn('page', page);
     });
     
-    $('#zoomInBtn').click(function() {
-        if (currentZoom < 1.5) {
-            currentZoom += 0.1;
-            applyZoom();
-        }
-    });
-    
-    $('#zoomOutBtn').click(function() {
-        if (currentZoom > 0.6) {
-            currentZoom -= 0.1;
-            applyZoom();
-        }
-    });
-    
     function applyZoom() {
         const newWidth = Math.floor(flipbookWidth * currentZoom);
         const newHeight = Math.floor(flipbookHeight * currentZoom);
         
         $('#flipbook').turn('size', newWidth, newHeight);
+        
+        // Update container size
+        $('.flipbook-wrapper').css({
+            width: newWidth + 100,
+            height: newHeight + 100
+        });
     }
+    
+    // Add zoom controls
+    $('#zoomInBtn').on('click', function() {
+        if (currentZoom < 2.0) {
+            currentZoom += 0.2;
+            applyZoom();
+        }
+    });
+    
+    $('#zoomOutBtn').on('click', function() {
+        if (currentZoom > 0.5) {
+            currentZoom -= 0.2;
+            applyZoom();
+        }
+    });
     
     $('#fullscreenBtn').click(function() {
         const elem = document.querySelector('.flipbook-container');
@@ -297,13 +304,9 @@ $(document).ready(function() {
         $('.export-details').text('This may take a few minutes. Please wait...');
         
         try {
-            const response = await fetch(`/export/${flipbookId}`, {
-                method: 'POST'
-            });
+            const response = await window.electronAPI.exportFlipbook(flipbookId);
             
-            const data = await response.json();
-            
-            if (data.success) {
+            if (response.success) {
                 $('.export-message').text('Building executable...');
                 $('.export-details').text('Packaging flipbook with PyInstaller...');
                 
@@ -314,24 +317,32 @@ $(document).ready(function() {
                     attempts++;
                     
                     try {
-                        const checkResponse = await fetch(`/check-export/${flipbookId}`);
-                        const checkData = await checkResponse.json();
+                        const checkResponse = await window.electronAPI.checkExport(flipbookId);
                         
-                        if (checkData.ready) {
+                        if (checkResponse.ready) {
                             clearInterval(checkInterval);
                             
                             $('.export-message').html('✓ .exe Ready for Download!');
                             $('.export-details').html(`
-                                File size: ${checkData.size_mb} MB<br>
-                                <a href="/download/${flipbookId}" 
-                                   style="display: inline-block; margin-top: 15px; padding: 12px 30px; background: #28a745; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                                   Download ${flipbookId}.exe
-                                </a><br>
-                                <button onclick="$('#exportStatus').hide();" 
-                                   style="margin-top: 10px; padding: 8px 20px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                                   Close
-                                </button>
+                                File size: ${checkResponse.size_mb} MB<br>
+                                <button id="downloadExeBtn" class="download-exe-btn">
+                                    Download ${flipbookId}.exe
+                                </button><br>
+                                <button class="close-export-btn">Close</button>
                             `);
+                            
+                            $('#downloadExeBtn').click(async () => {
+                                try {
+                                    await window.electronAPI.downloadExe(flipbookId);
+                                } catch (error) {
+                                    console.error('Download error:', error);
+                                    alert('Failed to download executable. Please try again.');
+                                }
+                            });
+                            
+                            $('.close-export-btn').click(() => {
+                                $('#exportStatus').hide();
+                            });
                             
                             btn.prop('disabled', false);
                         } else if (attempts >= maxAttempts) {
@@ -339,10 +350,7 @@ $(document).ready(function() {
                             $('.export-message').html('⚠ Build Timeout');
                             $('.export-details').html(`
                                 The build is taking longer than expected.<br>
-                                <button onclick="location.reload();" 
-                                   style="margin-top: 15px; padding: 8px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                                   Refresh and Try Again
-                                </button>
+                                <button onclick="location.reload();">Refresh and Try Again</button>
                             `);
                             btn.prop('disabled', false);
                         }
@@ -351,17 +359,14 @@ $(document).ready(function() {
                     }
                 }, 5000);
             } else {
-                throw new Error(data.error || 'Export failed');
+                throw new Error(response.error || 'Export failed');
             }
         } catch (error) {
             console.error('Export error:', error);
             $('.export-message').html('✗ Export Failed');
             $('.export-details').html(`
                 ${error.message}<br>
-                <button onclick="$('#exportStatus').hide();" 
-                   style="margin-top: 15px; padding: 8px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                   Close
-                </button>
+                <button onclick="$('#exportStatus').hide();">Close</button>
             `);
             btn.prop('disabled', false);
         }

@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 import subprocess
 import threading
+import sys
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -91,24 +92,33 @@ def export_exe(flipbook_id):
     flipbook_dir = os.path.join(app.config['OUTPUT_FOLDER'], flipbook_id)
     if not os.path.exists(flipbook_dir):
         return jsonify({'error': 'Flipbook not found'}), 404
-    
+
     def build_in_background():
         try:
-            result = subprocess.run(
-                ['python', 'export_flipbook.py', flipbook_id],
-                capture_output=True,
-                text=True,
-                timeout=300
-            )
-            print(f"Export output: {result.stdout}")
-            if result.stderr:
-                print(f"Export errors: {result.stderr}")
+            # If running as a PyInstaller executable, call build_exe directly
+            if getattr(sys, 'frozen', False):
+                result = build_exe(flipbook_id, flipbook_dir)
+                if result:
+                    print("Export completed successfully")
+                else:
+                    print("Export failed")
+            else:
+                # Otherwise, use subprocess (for development)
+                result = subprocess.run(
+                    [sys.executable, 'export_flipbook.py', flipbook_id],
+                    capture_output=True,
+                    text=True,
+                    timeout=300
+                )
+                print(f"Export output: {result.stdout}")
+                if result.stderr:
+                    print(f"Export errors: {result.stderr}")
         except Exception as e:
             print(f"Export error: {e}")
-    
+
     thread = threading.Thread(target=build_in_background, daemon=True)
     thread.start()
-    
+
     return jsonify({
         'success': True,
         'message': 'Export started. This may take a few minutes...'
@@ -134,13 +144,17 @@ def download_exe(flipbook_id):
 def check_export(flipbook_id):
     exe_path = os.path.join('output_exe', f'{flipbook_id}.exe')
     if os.path.exists(exe_path):
-        file_size = os.path.getsize(exe_path) / (1024 * 1024)
+        file_size = os.path.getsize(exe_path) / (1024 * 1024)  # Convert to MB
         return jsonify({
             'ready': True,
             'size_mb': round(file_size, 2)
         })
     else:
-        return jsonify({'ready': False})
+        # Check if the export process is still running
+        processes = subprocess.run(['tasklist'], capture_output=True, text=True)
+        if f'{flipbook_id}.exe' in processes.stdout:
+            return jsonify({'ready': False, 'status': 'building'})
+        return jsonify({'ready': False, 'status': 'waiting'})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='127.0.0.1', port=5000, debug=False, threaded=True)

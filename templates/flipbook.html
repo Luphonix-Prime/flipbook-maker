@@ -121,5 +121,33 @@
         const flipbookId = "{{ flipbook_id }}";
     </script>
     <script src="/static/js/flipbook.js"></script>
+    <script>
+      // Add this to your existing JavaScript
+      window.electronAPI.onExportStarted(() => {
+        const exportStatus = document.getElementById('exportStatus');
+        exportStatus.style.display = 'block';
+      });
+    
+      window.electronAPI.onExportProgress((data) => {
+        const exportDetails = document.querySelector('.export-details');
+        exportDetails.textContent = data.message;
+      });
+    
+      window.electronAPI.onExportError((data) => {
+        const exportDetails = document.querySelector('.export-details');
+        exportDetails.textContent = `Error: ${data.error}`;
+        exportDetails.style.color = '#dc3545';
+      });
+    
+      window.electronAPI.onExportComplete(() => {
+        const exportStatus = document.getElementById('exportStatus');
+        const exportDetails = document.querySelector('.export-details');
+        exportDetails.textContent = 'Export completed successfully!';
+        exportDetails.style.color = '#28a745';
+        setTimeout(() => {
+          exportStatus.style.display = 'none';
+        }, 2000);
+      });
+    </script>
 </body>
 </html>
