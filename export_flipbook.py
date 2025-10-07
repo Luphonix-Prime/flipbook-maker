@@ -866,11 +866,44 @@ def build_exe(flipbook_id, flipbook_dir):
         build_dir = os.path.join(output_exe_dir, flipbook_id)
         os.makedirs(build_dir, exist_ok=True)
         
+        # Create flipbook data directory and copy required files
+        flipbook_data_dir = os.path.join(build_dir, 'flipbook_data')
+        os.makedirs(flipbook_data_dir, exist_ok=True)
+        
+        # Copy flipbook files to data directory
+        metadata_path = os.path.join(flipbook_dir, 'metadata.json')
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+            
+        # Copy all page images
+        for page in metadata['pages']:
+            image_path = os.path.join('static', page['image'])
+            if os.path.exists(image_path):
+                dest_path = os.path.join(flipbook_data_dir, os.path.basename(page['image']))
+                shutil.copy2(image_path, dest_path)
+                # Update image path in metadata
+                page['image'] = os.path.basename(page['image'])
+        
+        # Save updated metadata
+        with open(os.path.join(flipbook_data_dir, 'metadata.json'), 'w') as f:
+            json.dump(metadata, f, indent=2)
+            
+        # Copy audio file if exists
+        audio_src = os.path.join('static', 'audio', 'page-flp.mp3')
+        if os.path.exists(audio_src):
+            shutil.copy2(audio_src, os.path.join(flipbook_data_dir, 'page-flp.mp3'))
+            
+        # Create viewer.html in flipbook data directory
+        viewer_path = create_standalone_viewer_html(metadata, flipbook_data_dir)
+        
         # Create work and dist directories
         work_dir = os.path.join(build_dir, 'build')
         dist_dir = os.path.join(build_dir, 'dist')
         os.makedirs(work_dir, exist_ok=True)
         os.makedirs(dist_dir, exist_ok=True)
+        
+        # Get launcher path
+        launcher_path = os.path.join(os.path.dirname(__file__), 'flipbook_launcher.py')
         
         # PyInstaller command
         pyinstaller_command = [
